@@ -17,6 +17,6 @@ public class OutboxMessage
     public int Attempts { get; set; }
     public string Status { get; set; } = "Pending";
     public string? LastError { get; set; }
+    public Guid? LeaseId { get; set; }
 
-    public OutboxMessage() { }
 }

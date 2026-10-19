@@ -1,4 +1,5 @@
 
+using Domain.Entities;
 using Domain.Interfaces;
 using Infastructure.Persistense;
 using Infastructure.Services;
@@ -17,7 +18,19 @@ public class Program
 
         // Add services to the container.
         builder.Services.AddSwaggerGen();
+        builder.Services
+            .AddOptions<OutboxOptions>()
+            .Bind(builder.Configuration.GetSection("Outbox"))
+            .Validate(o => o.IsLeaseSufficient(out _), "Outbox: LeaseDuration is too short for BatchSize/MaxConcurrency/timeouts")
+            .ValidateOnStart(); // приложение не стартует с заведомо неверной конфигурацией
 
+        builder.Services.AddSingleton(new WorkerIdentity($"{Environment.MachineName}:{Guid.NewGuid():N}"));
+        builder.Services.AddSingleton<IOutboxRetryPolicy, ExponentialBackoffRetryPolicy>();
+        builder.Services.AddSingleton<IOutboxErrorClassifier, ServiceBusErrorClassifier>();
+        builder.Services.AddSingleton<IOutboxPublisher, ServiceBusOutboxPublisher>();
+
+        // Остановка: отмена прерывает отправки сразу, но финализация может занять до FinalizeTimeout.
+        builder.Services.Configure<HostOptions>(o => o.ShutdownTimeout = TimeSpan.FromSeconds(45));
         builder.Services.AddSingleton<ISqlConnectionFactory>(_ => new SqlConnectionFactory(
         builder.Configuration.GetConnectionString("Worker") ?? throw new InvalidOperationException("ConnectionStrings:OutboxDb is not configured")));
 

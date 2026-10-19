@@ -12,6 +12,7 @@
     [Attempts]         INT                  NOT NULL CONSTRAINT DF_Outbox_Attempts DEFAULT 0,
     [Status]           NVARCHAR(16)         NOT NULL CONSTRAINT DF_Outbox_Status DEFAULT N'Pending',
     [LastError]        NVARCHAR(2000)       NULL,
+    [LeaseId]          UNIQUEIDENTIFIER NULL, 
     CONSTRAINT UQ_OutboxMessages_EventId UNIQUE ([EventId])
 );
 

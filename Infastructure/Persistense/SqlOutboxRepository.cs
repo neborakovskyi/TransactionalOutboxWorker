@@ -37,6 +37,7 @@ public class SqlOutboxRepository(ISqlConnectionFactory connections,
     UPDATE candidates
     SET [Status]       = N'Processing',
         LockOwner      = @WorkerId,
+        LeaseId        = @LeaseId,
         -- аренда считается по часам SQL Server, а не приложения (нет clock skew между инстансами)
         LockedUntilUtc = DATEADD(SECOND, @LeaseSeconds, SYSUTCDATETIME()),
         -- Attempts растёт при захвате: poison-запись, убивающая процесс, тоже исчерпает лимит
@@ -46,7 +47,7 @@ public class SqlOutboxRepository(ISqlConnectionFactory connections,
     OUTPUT inserted.Id, inserted.EventId, inserted.[Type], inserted.Payload,
            inserted.CreatedAtUtc, inserted.PublishedAtUtc, inserted.NextAttemptAtUtc,
            inserted.LockedUntilUtc, inserted.LockOwner, inserted.Attempts,
-           inserted.[Status], inserted.LastError;
+           inserted.[Status], inserted.LastError, inserteed.LeaseId;
     """;
 
     public async Task<IReadOnlyList<OutboxMessage>> ClaimBatchAsync(string workerId, int batchSize, TimeSpan leaseDuration, CancellationToken cancellationToken)
@@ -71,6 +72,7 @@ public class SqlOutboxRepository(ISqlConnectionFactory connections,
             {
                 BatchSize = batchSize,
                 WorkerId = workerId,
+                LeaseId = Guid.NewGuid(),// один Guid на всю пачку; сигнатура метода не меняется
                 LeaseSeconds = (int)Math.Ceiling(leaseDuration.TotalSeconds)
             },
             cancellationToken: cancellationToken); // токен доходит до SqlCommand
@@ -85,8 +87,8 @@ public class SqlOutboxRepository(ISqlConnectionFactory connections,
         foreach (var m in rows)
         {
             m.CreatedAtUtc = DateTime.SpecifyKind(m.CreatedAtUtc, DateTimeKind.Utc);
-            if (m.LockedUntilUtc is { } l)
-                m.LockedUntilUtc = DateTime.SpecifyKind(l, DateTimeKind.Utc);
+            if (m.LockedUntilUtc is { } datetime) // .HasValue()
+                m.LockedUntilUtc = DateTime.SpecifyKind(datetime, DateTimeKind.Utc);
         }
 
         // Наблюдаемость: по этим логам видно и задержку в очереди, и повторные захваты.
@@ -107,7 +109,24 @@ public class SqlOutboxRepository(ISqlConnectionFactory connections,
         return rows;
     }
 
-   // MarkPublishedAsync(ids)
-   // MarkRetryAsync(...) 
-   // MarkFailedAsync(...)
+    public async Task<int> MarkFailedAsync(IReadOnlyCollection<FailRequest> items, Guid leaseId, CancellationToken ct)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<int> MarkPublishedAsync(IReadOnlyCollection<long> ids, Guid leaseId, CancellationToken ct)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<int> ReleaseAsync(IReadOnlyCollection<long> ids, Guid leaseId, CancellationToken ct)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<int> ScheduleRetryAsync(IReadOnlyCollection<RetryRequest> items, Guid leaseId, CancellationToken ct)
+    {
+        throw new NotImplementedException();
+    }
 }
+
