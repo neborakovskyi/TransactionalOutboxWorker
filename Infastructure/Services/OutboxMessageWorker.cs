@@ -103,7 +103,7 @@ public class OutboxMessageWorker(ISqlOutboxRepository repository,
         var claimStartedAt = Stopwatch.GetTimestamp();
 
         var batch = await repository.ClaimBatchAsync(
-            workerId.ToString(), options.Value.BatchSize, options.Value.LeaseDuration, stoppingToken);
+            workerId.Value, options.Value.BatchSize, options.Value.LeaseDuration, stoppingToken);
 
         if (batch.Count == 0)
             return BatchResult.Empty;

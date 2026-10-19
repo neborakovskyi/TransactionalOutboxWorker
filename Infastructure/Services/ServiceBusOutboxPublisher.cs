@@ -9,18 +9,19 @@ public sealed class ServiceBusOutboxPublisher(
     ) : IOutboxPublisher
 {
 
-    public Task PublishAsync(OutboxMessage m, CancellationToken cancellationToken)
+    public Task PublishAsync(OutboxMessage outputMessage, CancellationToken cancellationToken)
     {
-        var message = new ServiceBusMessage(BinaryData.FromString(m.Payload))
+        var message = new ServiceBusMessage(BinaryData.FromString(outputMessage.Payload))
         {
-            MessageId = m.EventId.ToString(),   // ключ для duplicate detection и идемпотентности Consumer
-            Subject = m.Type,
+            MessageId = outputMessage.EventId.ToString(),   // ключ для duplicate detection и идемпотентности Consumer
+            Subject = outputMessage.Type,
             ContentType = "application/json"    // предполагаю JSON в Payload; поправь, если нет
         };
-        message.ApplicationProperties["outboxId"] = m.Id;
-        message.ApplicationProperties["attempt"] = m.Attempts;
+        message.ApplicationProperties["outboxId"] = outputMessage.Id;
+        message.ApplicationProperties["attempt"] = outputMessage.Attempts;
 
         // SendMessageAsync завершается после подтверждения брокером. Это и есть "подтверждённая отправка".
-        return sender.SendMessageAsync(message, cancellationToken);
+        //return sender.SendMessageAsync(message, cancellationToken);
+        return Task.CompletedTask;
     }
 }

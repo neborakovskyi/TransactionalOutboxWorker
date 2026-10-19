@@ -61,7 +61,7 @@ public class Program
             return !string.IsNullOrWhiteSpace(settings.ConnectionString)
                 ? new ServiceBusClient(settings.ConnectionString, clientOptions)
                 // Managed Identity / az login / VS credentials; нужна роль "Azure Service Bus Data Sender"
-                : new ServiceBusClient(settings.FullyQualifiedNamespace, new DefaultAzureCredential(), clientOptions);
+                : new ServiceBusClient(settings.FullyQualifiedNamespace, /*new DefaultAzureCredential(), */clientOptions);
         });
 
         // Sender: создаётся из client, тоже singleton и потокобезопасен.
