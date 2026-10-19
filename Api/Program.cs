@@ -1,9 +1,12 @@
 
+using Azure.Identity;
+using Azure.Messaging.ServiceBus;
 using Domain.Entities;
 using Domain.Interfaces;
 using Infastructure.Persistense;
 using Infastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Outbox.Worker.Persistence;
 
 namespace Api;
@@ -23,6 +26,50 @@ public class Program
             .Bind(builder.Configuration.GetSection("Outbox"))
             .Validate(o => o.IsLeaseSufficient(out _), "Outbox: LeaseDuration is too short for BatchSize/MaxConcurrency/timeouts")
             .ValidateOnStart(); // приложение не стартует с заведомо неверной конфигурацией
+        
+        builder.Services
+            .AddOptions<ServiceBusSettings>()
+            .Bind(builder.Configuration.GetSection("ServiceBus"))
+            .Validate(s => !string.IsNullOrWhiteSpace(s.EntityName)
+                           && (!string.IsNullOrWhiteSpace(s.ConnectionString)
+                               || !string.IsNullOrWhiteSpace(s.FullyQualifiedNamespace)),
+                      "ServiceBus: EntityName and either ConnectionString or FullyQualifiedNamespace are required")
+            .ValidateOnStart();
+
+        // Client: один на приложение, потокобезопасный, держит AMQP-соединение.
+        builder.Services.AddSingleton(sp =>
+        {
+            var settings = sp.GetRequiredService<IOptions<ServiceBusSettings>>().Value;
+
+            var clientOptions = new ServiceBusClientOptions
+            {
+                // Собственные ретраи SDK выполняются внутри SendMessageAsync, поверх них работает
+                // ретрай Outbox. Оставляем SDK немного, иначе PublishTimeout (15 с) будет обрывать
+                // отправку посреди его внутренних повторов.
+                RetryOptions = new ServiceBusRetryOptions
+                {
+                    Mode = ServiceBusRetryMode.Exponential,
+                    MaxRetries = 2,
+                    Delay = TimeSpan.FromMilliseconds(500),
+                    MaxDelay = TimeSpan.FromSeconds(3),
+                    TryTimeout = TimeSpan.FromSeconds(10)
+                }
+                // Если исходящий порт 5671 закрыт (корпоративная сеть):
+                // TransportType = ServiceBusTransportType.AmqpWebSockets
+            };
+
+            return !string.IsNullOrWhiteSpace(settings.ConnectionString)
+                ? new ServiceBusClient(settings.ConnectionString, clientOptions)
+                // Managed Identity / az login / VS credentials; нужна роль "Azure Service Bus Data Sender"
+                : new ServiceBusClient(settings.FullyQualifiedNamespace, new DefaultAzureCredential(), clientOptions);
+        });
+
+        // Sender: создаётся из client, тоже singleton и потокобезопасен.
+        builder.Services.AddSingleton(sp =>
+        {
+            var settings = sp.GetRequiredService<IOptions<ServiceBusSettings>>().Value;
+            return sp.GetRequiredService<ServiceBusClient>().CreateSender(settings.EntityName);
+        });
 
         builder.Services.AddSingleton(new WorkerIdentity($"{Environment.MachineName}:{Guid.NewGuid():N}"));
         builder.Services.AddSingleton<IOutboxRetryPolicy, ExponentialBackoffRetryPolicy>();
