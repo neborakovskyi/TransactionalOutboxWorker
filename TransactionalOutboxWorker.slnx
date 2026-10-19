@@ -1,0 +1,11 @@
+<Solution>
+  <Project Path="Api/Api.csproj" Id="0b3ec69c-d720-493d-adb0-6ce3a848e48c" />
+  <Project Path="Application/Application.csproj" Id="cf8cf6d4-d4b9-4054-9b02-db278cf0880b" />
+  <Project Path="Domain/Domain.csproj" Id="dda68ce8-c0b9-42c5-ac02-a7dc52a4aeba" />
+  <Project Path="Infastructure/Infastructure.csproj" Id="e8b8c204-aa79-4c22-a23c-93fec997a8c4" />
+  <Project Path="Tests/Tests.csproj" Id="14cf73f2-88bf-43cd-b9e0-ee093751ae85" />
+  <Project Path="Worker/Worker.Database.sqlproj" Id="baa2ecc8-60e8-457d-ad15-8a0ea96404d0">
+    <Build />
+    <Deploy />
+  </Project>
+</Solution>
