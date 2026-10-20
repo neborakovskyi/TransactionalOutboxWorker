@@ -21,7 +21,6 @@ public sealed class ServiceBusOutboxPublisher(
         message.ApplicationProperties["attempt"] = outputMessage.Attempts;
 
         // SendMessageAsync завершается после подтверждения брокером. Это и есть "подтверждённая отправка".
-        //return sender.SendMessageAsync(message, cancellationToken);
-        return Task.CompletedTask;
+        return sender.SendMessageAsync(message, cancellationToken);
     }
 }

@@ -4,11 +4,10 @@ using Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text.Json;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace Infastructure.Persistense;
 
-public class SqlOutboxRepository(ISqlConnectionFactory connections, 
+public class SqlOutboxRepository(ISqlConnectionFactory connections,
     ILogger<SqlOutboxRepository> logger) : ISqlOutboxRepository
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web); // camelCase: id, delayMs, error
@@ -174,7 +173,8 @@ public class SqlOutboxRepository(ISqlConnectionFactory connections,
 
         return rows;
     }
-       
+
+    // elision(опускание) 
     public Task<int> MarkPublishedAsync(IReadOnlyCollection<long> ids, Guid leaseId, CancellationToken ct)
         => ExecuteBatchAsync(MarkPublishedSql, ids, leaseId, ct);
 
